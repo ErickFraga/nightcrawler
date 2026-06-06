@@ -8,11 +8,12 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ncrawler.api.auth import require_api_key
 from ncrawler.api.dependencies import get_db
 from ncrawler.api.routers.health import _scheduler_state, record_scheduler_run
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/discovery", tags=["discovery"])
+router = APIRouter(prefix="/discovery", tags=["discovery"], dependencies=[Depends(require_api_key)])
 
 
 class TriggerResponse(BaseModel):

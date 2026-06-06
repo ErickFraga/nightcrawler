@@ -29,5 +29,8 @@ class Settings(BaseSettings):
     # Quality preference
     preferred_quality: str = "1080p"
 
+    # API authentication (empty string = no auth — dev mode only)
+    api_key: str = ""
+
 
 settings = Settings()

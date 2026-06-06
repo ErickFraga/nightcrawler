@@ -5,11 +5,12 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from ncrawler.api.auth import require_api_key
 from ncrawler.api.dependencies import get_db
 from ncrawler.api.schemas import DownloadRead, DownloadUpdate
 from ncrawler.db.models.download import DownloadModel
 
-router = APIRouter(prefix="/downloads", tags=["downloads"])
+router = APIRouter(prefix="/downloads", tags=["downloads"], dependencies=[Depends(require_api_key)])
 
 
 def _to_schema(row: DownloadModel) -> DownloadRead:

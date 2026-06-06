@@ -39,6 +39,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://ncrawler:ncrawler@postgres:5432/ncrawler
       QBITTORRENT_HOST: qbittorrent
+      # API_KEY is loaded from .env — set it there before deploying
       QBITTORRENT_PORT: "8080"
       DOWNLOADS_PATH: /downloads
     volumes:

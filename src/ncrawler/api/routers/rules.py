@@ -5,11 +5,12 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
+from ncrawler.api.auth import require_api_key
 from ncrawler.api.dependencies import get_db
 from ncrawler.api.schemas import RuleCreate, RuleRead, RuleUpdate
 from ncrawler.db.models.rule import RuleModel
 
-router = APIRouter(prefix="/rules", tags=["rules"])
+router = APIRouter(prefix="/rules", tags=["rules"], dependencies=[Depends(require_api_key)])
 
 
 def _row_to_schema(row: RuleModel) -> RuleRead:

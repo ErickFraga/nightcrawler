@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from dataclasses import dataclass, field
 
 import httpx
 
 TMDB_BASE = "https://api.themoviedb.org/3"
+logger = logging.getLogger(__name__)
+
+# HTTP status codes that warrant a retry
+_RETRYABLE = {429, 500, 502, 503, 504}
+# HTTP status codes that should fail immediately without retry
+_NO_RETRY = {400, 401, 403, 404, 422}
 
 
 @dataclass
@@ -49,24 +57,36 @@ def _parse_year(date_str: str | None) -> int | None:
 
 
 class TMDBClient:
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, max_retries: int = 3, retry_delay: float = 1.0) -> None:
         self._api_key = api_key
+        self._max_retries = max_retries
+        self._retry_delay = retry_delay
         self._client = httpx.AsyncClient(
             base_url=TMDB_BASE,
             params={"api_key": api_key},
             timeout=30,
         )
 
-    def _common_params(self, extra: dict | None = None) -> dict:
-        params = {"api_key": self._api_key}
-        if extra:
-            params.update(extra)
-        return params
-
     async def _get(self, path: str, params: dict | None = None) -> dict:
-        response = await self._client.get(path, params=params or {})
-        response.raise_for_status()
-        return response.json()
+        last_exc: httpx.HTTPStatusError | None = None
+        for attempt in range(self._max_retries):
+            response = await self._client.get(path, params=params or {})
+            if response.status_code in _NO_RETRY:
+                response.raise_for_status()
+            if response.status_code < 400:
+                return response.json()
+            if response.status_code in _RETRYABLE:
+                last_exc = httpx.HTTPStatusError(
+                    f"HTTP {response.status_code}", request=response.request, response=response
+                )
+                wait = self._retry_delay * (2 ** attempt)
+                logger.warning("TMDB %s → %d, retry %d/%d in %.1fs",
+                               path, response.status_code, attempt + 1, self._max_retries, wait)
+                if attempt < self._max_retries - 1:
+                    await asyncio.sleep(wait)
+                continue
+            response.raise_for_status()
+        raise last_exc  # type: ignore[misc]
 
     # ------------------------------------------------------------------
     # Movies
