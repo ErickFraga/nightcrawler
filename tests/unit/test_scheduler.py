@@ -11,6 +11,13 @@ from ncrawler.torrent.base import TorrentResult
 from ncrawler.scheduler.tasks import run_discovery
 
 
+def _make_db() -> MagicMock:
+    """Return a MagicMock DB session where query().filter().first() → None (no existing titles)."""
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = None
+    return db
+
+
 def _make_candidate(title: str = "Inception", tmdb_id: int = 1001) -> TitleCandidate:
     return TitleCandidate(
         title=title,
@@ -52,7 +59,7 @@ async def test_run_discovery_calls_release_finder(tmp_path):
     finder.find_new_series = AsyncMock(return_value=[])
     orchestrator = MagicMock()
     qb = MagicMock()
-    db = MagicMock()
+    db = _make_db()
 
     await run_discovery(finder=finder, orchestrator=orchestrator, qb_client=qb, db=db)
 
@@ -71,7 +78,7 @@ async def test_run_discovery_searches_torrent_for_each_candidate():
     orchestrator.find_best = AsyncMock(return_value=None)
 
     qb = MagicMock()
-    db = MagicMock()
+    db = _make_db()
 
     await run_discovery(finder=finder, orchestrator=orchestrator, qb_client=qb, db=db)
 
@@ -95,7 +102,7 @@ async def test_run_discovery_adds_magnet_when_torrent_found():
     qb = MagicMock()
     qb.add_magnet = AsyncMock(return_value=True)
 
-    db = MagicMock()
+    db = _make_db()
 
     await run_discovery(finder=finder, orchestrator=orchestrator, qb_client=qb, db=db)
 
@@ -118,7 +125,7 @@ async def test_run_discovery_skips_magnet_when_no_torrent_found():
     qb = MagicMock()
     qb.add_magnet = AsyncMock()
 
-    db = MagicMock()
+    db = _make_db()
 
     await run_discovery(finder=finder, orchestrator=orchestrator, qb_client=qb, db=db)
 
@@ -140,7 +147,7 @@ async def test_run_discovery_handles_multiple_candidates():
     qb = MagicMock()
     qb.add_magnet = AsyncMock(return_value=True)
 
-    db = MagicMock()
+    db = _make_db()
 
     await run_discovery(finder=finder, orchestrator=orchestrator, qb_client=qb, db=db)
 
