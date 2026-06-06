@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ncrawler
+      POSTGRES_PASSWORD: ncrawler
+      POSTGRES_DB: ncrawler
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ncrawler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: America/Sao_Paulo
+      WEBUI_PORT: 8080
+    volumes:
+      - qbittorrent_config:/config
+      - downloads:/downloads
+    ports:
+      - "8080:8080"
+      - "6881:6881"
+      - "6881:6881/udp"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ncrawler:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ncrawler:ncrawler@postgres:5432/ncrawler
+      QBITTORRENT_HOST: qbittorrent
+      QBITTORRENT_PORT: "8080"
+      DOWNLOADS_PATH: /downloads
+    volumes:
+      - downloads:/downloads
+      - ${MOVIES_ROOT:-/srv/jellyfin/movies}:/library/movies
+      - ${SERIES_ROOT:-/srv/jellyfin/series}:/library/series
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  qbittorrent_config:
+  downloads:
